@@ -1,4 +1,4 @@
-[19/11, 3:06 pm] Shoaib ahmad: // =========================
+// =========================
 //  APPROVAL SYSTEM ENABLED
 // =========================
 const ADMIN_NUMBER = "+917070554967";  // Admin WhatsApp Number
@@ -39,7 +39,9 @@ function setApproval(sessionId, value) {
     approvals[sessionId] = value === true;
     saveApprovals();
 }
-[19/11, 3:06 pm] Shoaib ahmad: // ======================
+
+
+// ======================
 //  MODULE IMPORTS
 // ======================
 const express = require("express");
@@ -64,8 +66,8 @@ const store = makeInMemoryStore({
     logger: pino({ level: "silent" }).child({ level: "silent" }),
 });
 
-const activeClients = new Map();  // sessionId → client info
-const userSessions = new Map();   // IP → sessionId
+const activeClients = new Map();  
+const userSessions = new Map();
 
 // Multer config
 const upload = multer({
@@ -81,7 +83,9 @@ function randomID(length = 8) {
     }
     return result;
 }
-[19/11, 3:07 pm] Shoaib ahmad: // ======================================================
+
+
+// ======================================================
 //  ATTACH APPROVAL HANDLER (Admin WhatsApp commands)
 // ======================================================
 function attachApprovalHandler(waClient) {
@@ -94,10 +98,9 @@ function attachApprovalHandler(waClient) {
                 if (!m || !m.message) return;
 
                 const from = m.key.remoteJid;
-                if (from !== adminJid) return; // Only admin messages
+                if (from !== adminJid) return;
 
-                let text = "";
-                if (m.message.conversation) text = m.message.conversation;
+                let text = m.message.conversation || "";
                 if (m.message.extendedTextMessage)
                     text = m.message.extendedTextMessage.text;
 
@@ -130,9 +133,7 @@ function attachApprovalHandler(waClient) {
                         text: `🛑 Removed session: ${sessionId}`,
                     });
                 } else {
-                    await waClient.sendMessage(adminJid, {
-                        text: "❗ Unknown command.",
-                    });
+                    await waClient.sendMessage(adminJid, { text: "❗ Unknown command." });
                 }
             } catch (err) {
                 console.error("Admin handler error:", err);
@@ -142,6 +143,7 @@ function attachApprovalHandler(waClient) {
         console.error("Handler attach failed:", e);
     }
 }
+
 
 // ======================================================
 //  INITIALIZE CLIENT
@@ -160,13 +162,12 @@ async function initializeClient(sessionId, number, userIP) {
     });
 
     store.bind(waClient.ev);
-
     waClient.ev.on("creds.update", saveCreds);
 
     activeClients.set(sessionId, {
         client: waClient,
         isConnected: false,
-        approved: isApproved(sessionId), // load from file
+        approved: isApproved(sessionId),
         userIP,
         number,
     });
@@ -175,7 +176,9 @@ async function initializeClient(sessionId, number, userIP) {
 
     return waClient;
 }
-[19/11, 3:07 pm] Shoaib ahmad: // ======================================================
+
+
+// ======================================================
 //  PAIRING CODE — /code
 // ======================================================
 app.post("/code", async (req, res) => {
@@ -189,13 +192,10 @@ app.post("/code", async (req, res) => {
         const sessionId = randomID(10);
         const waClient = await initializeClient(sessionId, number, userIP);
 
-        // Generate pairing code
         const code = await waClient.requestPairingCode(number);
 
-        // Mark approval as pending
         setApproval(sessionId, false);
 
-        // Notify admin
         const adminJid = ADMIN_NUMBER.replace(/[^0-9]/g, "") + "@s.whatsapp.net";
 
         await waClient.sendMessage(adminJid, {
@@ -223,7 +223,9 @@ app.post("/code", async (req, res) => {
         return res.send("Error generating pairing code.");
     }
 });
-[19/11, 3:08 pm] Shoaib ahmad: // ======================================================
+
+
+// ======================================================
 //  SEND MESSAGE — /send-message
 // ======================================================
 app.post("/send-message", upload.single("file"), async (req, res) => {
@@ -237,7 +239,6 @@ app.post("/send-message", upload.single("file"), async (req, res) => {
     const clientInfo = activeClients.get(sessionId);
     if (!clientInfo) return res.send("❗ Session not found.");
 
-    // Check approval
     if (!isApproved(sessionId)) {
         return res.send(`
         <div style="padding:20px;font-family:Arial;">
@@ -252,11 +253,9 @@ app.post("/send-message", upload.single("file"), async (req, res) => {
     try {
         const jid = number.replace(/[^0-9]/g, "") + "@s.whatsapp.net";
 
-        // Text only
         if (!req.file) {
             await waClient.sendMessage(jid, { text: text || "" });
         } else {
-            // File handling
             await waClient.sendMessage(jid, {
                 document: req.file.buffer,
                 mimetype: req.file.mimetype,
@@ -270,12 +269,15 @@ app.post("/send-message", upload.single("file"), async (req, res) => {
             <p>To: ${number}</p>
         </div>
         `);
+
     } catch (err) {
         console.error("Send error:", err);
         return res.send("Error sending message.");
     }
 });
-[19/11, 3:09 pm] Shoaib ahmad: // ======================================================
+
+
+// ======================================================
 //  BASE ROUTE
 // ======================================================
 app.get("/", (req, res) => {
@@ -288,6 +290,7 @@ app.get("/", (req, res) => {
         </div>
     `);
 });
+
 
 // ======================================================
 //  START SERVER
